@@ -10,7 +10,7 @@ header h1{
     font-size: 60px;
     font-weight: bold;
 }
-header #newgamebutton{
+header #newGameButton{
     display: block;
     margin:20px auto;
 
