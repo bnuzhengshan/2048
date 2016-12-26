@@ -1,449 +1,457 @@
-var board = [];
+/**
+ * @author luhengshan
+ */
+//初始化数据
+var board = new Array();
 var score = 0;
-var hasConflicted = new Array();
-
-$(document).ready(function () {
-    newGame();
+var isCollapsed =  new Array();
+//根据屏幕宽度适配移动端
+var documentWidth= window.screen.availWidth;
+var gridContainerWidth = 0.92*documentWidth;
+var gridContainerPadding = 0.04*documentWidth;
+var cellWidth = 0.18*documentWidth;
+function prepareForMobile(){
+	$("#grid-container").css("width",gridContainerWidth - 2*gridContainerPadding);
+	$("#grid-container").css("height",gridContainerWidth - 2*gridContainerPadding);
+	$("#grid-container").css("padding",gridContainerPadding);
+	$("#grid-container").css("border-radius",0.02*gridContainerWidth);
+	$("#grid-container").css("margin-top",2*gridContainerPadding);
+	$("#grid-container").css("margin-bottom",2*gridContainerPadding);
+	$(".grid-cell").css("width",cellWidth);
+	$(".grid-cell").css("height",cellWidth);
+	$(".grid-cell").css("border-radius",0.02*cellWidth);
+}
+$(document).ready(function(){
+	if(documentWidth > 500){
+		cellWidth = 100;
+		gridContainerPadding = 20;
+	}else{
+		prepareForMobile();
+	}
+	newGame();
 });
 
-function newGame() {
-    //初始化棋盘
-    init();
-    //在随机两个格子中生成数字
-    generateOneNum();
-    generateOneNum();
+//初始化游戏
+function newGame(){
+	//初始化游戏棋盘
+	init();
+	generateOneNumber();
+	generateOneNumber();
 }
 
-function init() {
-    for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 4; j++) {
-            var gridCell = $("#gird-cell-" + i + "-" + j);
-            gridCell.css('top', getPosTop(i, j));
-            gridCell.css('left', getPosLeft(i, j));
-        }
-    }
-
-    for (var i = 0; i < 4; i++) {
-        board[i] = new Array();
-        hasConflicted[i] = new Array;
-        for (var j = 0; j < 4; j++) {
-            board[i][j] = 0;
-            hasConflicted[i][j] = false;
-        }
-
-    }
-
-    upDateBoardView();
+function init(){
+	for(var i=0;i <= 3;i++){
+		for(var j=0;j <= 3;j++ ){
+			var gridCell = $("#grid-cell-"+i+"-"+j);
+			//设置他们的位置
+			gridCell.css("top",getPositionTop(i,j));
+			gridCell.css("left",getPositonLeft(i,j));
+		}
+	}
+	
+	//初始化board变量
+	for(var i =0;i <= 3;i++){
+		board[i] = new Array();
+		for(var j = 0;j <= 3;j++){
+			board[i][j] = 0;
+		}
+	}
+	
+	//初始化score
+	score = 0;
+	updateScore();
+	updateBoardView();
 }
-function generateOneNum() {
-    if (noSpace(board)) {
-        return false;
-    }
-    //随机一个位置
-    var randX = parseInt(Math.floor(Math.random() * 4));
-    var randY = parseInt(Math.floor(Math.random() * 4));
-
-    var times = 0;
-    while (times < 50) {
-        if (board[randX][randY] == 0)
-            break;
-
-        randX = parseInt(Math.floor(Math.random() * 4));
-        randY = parseInt(Math.floor(Math.random() * 4));
-        times++;
-    }
-    //人工生成一个位置
-    if (times == 50) {
-        for (var i = 0; i < 4; i++) {
-            for (var j = 0; j < 4; j++) {
-                if (board[i][j] == 0) {
-                    randX = i;
-                    randY = j;
-                }
-            }
-        }
-    }
-    //随机一个数字
-    var randNum = Math.random() < 0.5 ? 1 : 2;
-    //在随机位置显示随机数
-    board[randX][randY] = randNum;
-
-    showNumWithAnimation(randX, randY, randNum);
-    return true;
-}
-function upDateBoardView() {
-    $(".number-cell").remove();
-    for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 4; j++) {
-            $("#grid-container").append('<div class="number-cell" id="number-cell-' + i + '-' + j + '"></div>');
-            var theNumberCell = $("#number-cell-" + i + "-" + j);
-
-
-            if (board[i][j] == 0) {
-                theNumberCell.css('width', '0px');
-                theNumberCell.css('height', '0px');
-                theNumberCell.css('top', getPosTop(i, j) + 50);
-                theNumberCell.css('left', getPosLeft(i, j) + 50);
-            } else {
-                theNumberCell.css('width', '100px');
-                theNumberCell.css('height', '100px');
-                theNumberCell.css('top', getPosTop(i, j));
-                theNumberCell.css('left', getPosLeft(i, j));
-                theNumberCell.css('background-color', getNumBackgroundColor(board[i][j]));
-                theNumberCell.css('color', getNumColor(board[i][j]));
-                theNumberCell.text(board[i][j]);
-            }
-            hasConflicted[i][j] = false;
-        }
-    }
+function getPositionTop(i,j){
+	return (cellWidth+gridContainerPadding)*i+gridContainerPadding;
 }
 
-function getPosTop(i, j) {
-    return 20 + i * 120;
+function getPositonLeft(i,j){
+	return (cellWidth+gridContainerPadding)*j+gridContainerPadding;
 }
 
-function getPosLeft(i, j) {
-    return 20 + j * 120;
+//根据board来更新显示
+function updateBoardView(){
+	//它的做法是生成新的一层number-cell覆盖到grid-cell上
+	//首先要去掉原来的number-cell,类似于清空
+	$(".number-cell").remove();
+	for(var i=0;i <= 3;i++){
+		for(var j=0;j <= 3;j++ ){
+				//先生成numbercell
+				$("#grid-container").append('<div class="number-cell" id="number-cell-'+i+'-'+j+'"></div>');
+				$(".number-cell").css('line-height',cellWidth+"px");
+				$(".number-cell").css('font-size',0.4*cellWidth+"px");
+				$(".number-cell").css("border-radius",0.06*cellWidth);
+				var numberCell = $("#number-cell-"+i+"-"+j);
+				//如果numberCell对应的board[i][j]为0,不显示
+				if(board[i][j] == 0){
+					numberCell.css("width","0");
+					numberCell.css("height","0");
+					numberCell.css("top",getPositionTop(i,j)+cellWidth/2);
+					numberCell.css("left",getPositonLeft(i,j)+cellWidth/2);
+				}else{
+					//反之,显示
+					//长宽沿用样式表的设置
+					numberCell.css("top",getPositionTop(i,j));
+					numberCell.css("left",getPositonLeft(i,j));
+					numberCell.css("width",cellWidth);
+					numberCell.css("height",cellWidth);
+					numberCell.css("background-color",getBackGroundColor(board[i][j]));
+					numberCell.css("color",getBackColor(board[i][j]));
+					numberCell.text(board[i][j]);
+				}
+		}
+	}
+	clearCollapsed();
 }
-function getNumBackgroundColor(num) {
-    switch (num) {
-        case 1:
-            return "#eee";
-            break;
-        case 2:
-            return "#eee4da";
-            break;
-        case 4:
-            return "#ede0c8";
-            break;
-        case 8:
-            return "#f2b179";
-            break;
-        case 16:
-            return "#f59563";
-            break;
-        case 32:
-            return "#f67c5f";
-            break;
-        case 64:
-            return "#f65e3b";
-            break;
-        case 128:
-            return "#edcf72";
-            break;
-        case 256:
-            return "#edcc61";
-            break;
-        case 512:
-            return "#9c0";
-            break;
-        case 1024:
-            return "#33b5e5";
-            break;
-        case 2048:
-            return "#09c";
-            break;
-        case 4096:
-            return "#a6c";
-            break;
-        case 8192:
-            return "#93c";
-            break;
-    }
-    return "black";
+function clearCollapsed(){
+	for(var i = 0;i <= 3;i++){
+		isCollapsed[i]= new Array();
+		for(var j = 0;j <= 3;j++)
+			isCollapsed[i][j] = false;
+	}
 }
 
-function getNumColor(num) {
-    if (num <= 4) {
-        return "#776e65";
-    }
-    return "white";
+//根据值选取背景颜色
+function getBackGroundColor(value){
+	switch(value){
+		case 2:return "#eee4da";break;
+		case 4:return "#ede0c8";break;
+		case 8:return "#f2b179";break;
+		case 16:return "#f59563";break;
+		case 32:return "#f67c5f";break;
+		case 64:return "#f65e38";break;
+		case 128:return "#edcf72";break;
+		case 256:return "#edcc61";break;
+		case 512:return "#9c0";break;
+		case 1024:return "#33b5e5";break;
+		case 2048:return "#09c";break;
+		case 4096:return "#a6c";break;
+		case 8192:return "#93c";break;
+		default:return "#93c";
+	}
 }
 
-function noSpace(board) {
-    for (var i = 0; i < 4; i++)
-        for (var j = 0; j < 4; j++)
-            if (board[i][j] == 0)
-                return false;
-
-    return true;
-}
-function showNumWithAnimation(i, j, randNum) {
-    var numCell = $("#number-cell-" + i + "-" + j);
-    numCell.css("background-color", getNumBackgroundColor(randNum));
-    numCell.css('color', getNumColor(randNum));
-    numCell.text(randNum);
-
-    numCell.animate({
-        width: '100px',
-        height: '100px',
-        top: getPosTop(i, j),
-        left: getPosLeft(i, j)
-    }, 100);
+//根据值去颜色
+function getBackColor(value){
+	if(value < 4)
+		return "#776e65";
+	else
+		return "white";
 }
 
-$(document).keydown(function (event) {
-    switch (event.keyCode) {
-        case 37:    //left
-            if (moveLeft()) {
-                generateOneNum();
-                isGameOver();
-            }
-            break;
-        case 38:    //up
-            if (moveUp()) {
-                generateOneNum();
-                isGameOver();
-            }
-            break;
-        case 39:    //right
-            if (moveRight()) {
-                generateOneNum();
-                isGameOver();
-            }
-            break;
-        case 40:    //down
-            if (moveDown()) {
-                generateOneNum();
-                isGameOver();
-            }
-            break;
-        default:    //default
-            break;
+//产生并显示一个随机数
+function generateOneNumber(){
+	var num = getZeroNumber();
+	if(num != 0){
+		var position = parseInt(Math.floor(Math.random()*num));
+		for(var i = 0;i <= 3;i++)
+			for(var j = 0; j <= 3;j++)
+				if(board[i][j] == 0){
+					if(position == 0){
+						if(Math.random() > 0.5)
+							board[i][j]=4;
+						else
+							board[i][j] = 2;
+						showNumber(i,j);
+						return;
+					}else{
+						position--;
+					}
+				}
+	}
+}
 
-    }
+//获取空余的0数目
+function getZeroNumber(){
+	var num = 0;
+	for(var i = 0;i <= 3;i++)
+		for(var j = 0; j <= 3;j++)
+			if(board[i][j] == 0)
+				num++;
+	return num;
+}
+//显示随机数
+function showNumber(i,j){
+	var numberCell = $("#number-cell-"+i+"-"+j);
+	numberCell.text(board[i][j]);
+	numberCell.css("background-color",getBackGroundColor(board[i][j]));
+	numberCell.css("color",getBackColor(board[i][j]));
+	
+	numberCell.animate({
+		width:cellWidth,
+		height:cellWidth,
+		top:getPositionTop(i,j),
+		left:getPositonLeft(i,j),
+	},200);
+}
+
+
+//接下来就是游戏的主循环了
+$(document).keydown(function(event){
+	switch(event.keyCode){
+		case 37://left
+		event.preventDefault();
+		if(isGameOver())
+			alert("Game Over!");
+		if(canMoveLeft()){
+			moveLeft();
+			setTimeout(updateBoardView,250);
+			generateOneNumber();
+		}
+		break;
+		case 38://up
+		event.preventDefault();
+		if(isGameOver())
+			alert("Game Over!");
+		if(canMoveUp()){
+			moveUp();
+			setTimeout(updateBoardView,250);
+			generateOneNumber();	
+		}
+		break;
+		case 39://right
+		event.preventDefault();
+		if(isGameOver())
+			alert("Game Over!");
+		if(canMoveRight()){
+			moveRight();
+			setTimeout(updateBoardView,250);
+			generateOneNumber();
+		}
+		break;
+		case 40://down
+		event.preventDefault();
+		if(isGameOver())
+			alert("Game Over!");
+		if(canMoveDown()){
+			moveDown();
+			setTimeout(updateBoardView,250);
+			generateOneNumber();
+		}
+		break;
+	}
 });
-function moveLeft() {
-    if (!canMoveLeft(board)) {
-        return false;
-    }
-    //moveLeft
-    for (var i = 0; i < 4; i++) {
-        for (var j = 1; j < 4; j++) {
-            if (board[i][j] != 0) {
-                for (var k = 0; k < j; k++) {
-                    if (board[i][k] == 0 && noBlockHorizontal(i, k, j, board)) {
-                        console.log('moveleft')
-                        //move
-                        showMoveAnimation(i, j, i, k);
-                        board[i][k] = board[i][j];
-                        board[i][j] = 0;
-                        continue;
-                    } else if (board[i][k] == board[i][j] && noBlockHorizontal(i, k, j, board)) {
-                        //move
-                        showMoveAnimation(i, j, i, k);
-                        //add
-                        board[i][k] += board[i][j];
-                        board[i][j] = 0;
-                        //add score
-                        score += board[i][k];
-                        updateScore(score);
 
-                        //hasConflicted[i][k] = true;
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    setTimeout(upDateBoardView, 200);
-    return true;
+function canMoveLeft(){
+	for(var i = 0; i <= 3;i++){
+		for(var j = 1; j <=3;j++)
+			if(board[i][j] != 0)
+				if(board[i][j-1] == 0 || board[i][j] ==  board[i][j-1])
+					return true;
+	}
+	return false;
 }
-function moveRight() {
-    if (!canMoveRight(board)) {
-        return false;
-    }
-    //moveRight
-    for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 3; j++) {
-            if (board[i][j] != 0) {
-                for (var k=j+1; k<4; k++) {
-                    if (board[i][k] == 0 && noBlockHorizontal(i, k, j, board)) {
-                        console.log('moveRight')
-                        //move
-                        showMoveAnimation(i, j, i, k);
-                        board[i][k] = board[i][j];
-                        board[i][j] = 0;
-                        continue;
-                    } else if (board[i][k] == board[i][j] && noBlockHorizontal(i, k, j, board)) {
-                        //move
-                        showMoveAnimation(i, j, i, k);
-                        //add
-                        board[i][k] += board[i][j];
-                        board[i][j] = 0;
-                        //add score
-                        score += board[i][k];
-                        updateScore(score);
-
-                        //hasConflicted[i][k] = true;
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    setTimeout(upDateBoardView, 200);
-    return true;
+function canMoveRight(){
+	for(var i = 0; i <= 3;i++){
+		for(var j = 2; j >= 0 ;j--)
+			if(board[i][j] != 0)
+				if(board[i][j+1] == 0 || board[i][j] ==  board[i][j+1])
+					return true;
+	}
+	return false;
 }
-function moveUp() {
-    if (!canMoveUp(board)) {
-        return false;
-    }
-    //moveUp
-    for (var i = 1; i < 4; i++) {
-        for (var j = 0; j < 4; j++) {
-            if (board[i][j] != 0) {
-                for (var k = 0; k < i; k++) {
-                    if (board[k][j] == 0 && noBlockVertical(k, i, j, board)) {
-                        console.log('moveUp')
-                        //move
-                        showMoveAnimation(i, j, k, j);
-                        board[k][j] = board[i][j];
-                        board[i][j] = 0;
-                        continue;
-                    } else if (board[k][j] == board[i][j] && noBlockVertical(k, i, j, board)) {
-                        //move
-                        showMoveAnimation(i, j, k, j);
-                        board[k][j] += board[i][j];
-                        board[i][j] = 0;
-                        //add score
-                        score += board[k][j];
-                        updateScore(score);
-
-                        //hasConflicted[i][k] = true;
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    setTimeout(upDateBoardView, 200);
-    return true;
+function canMoveUp(){
+	for(var j = 0; j <= 3;j++){
+		for(var i = 1; i <= 3 ;i++)
+		 	if(board[i][j] != 0)
+				if(board[i-1][j] == 0 || board[i][j] ==  board[i-1][j])
+					return true;
+	}
+	return false;
 }
-function moveDown() {
-    if (!canMoveDown(board)) {
-        return false;
-    }
-    //moveDown
-    for (var i = 0; i < 3; i++) {
-        for (var j = 0; j < 4; j++) {
-            if (board[i][j] != 0) {
-                for (var k = i; k < 4; k++) {
-                    if (board[k][j] == 0 && noBlockVertical(k, i, j, board)) {
-                        console.log('moveDown')
-                        //move
-                        showMoveAnimation(i, j, k, j);
-                        board[k][j] = board[i][j];
-                        board[i][j] = 0;
-                        continue;
-                    } else if (board[k][j] == board[i][j] && noBlockVertical(k, i, j, board)) {
-                        console.log('moveDown2')
-                        //move
-                        showMoveAnimation(i, j, k, j);
-                        board[k][j] += board[i][j];
-                        board[i][j] = 0;
-                        //add score
-                        score += board[k][j];
-                        updateScore(score);
-
-                        //hasConflicted[i][k] = true;
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    setTimeout(upDateBoardView, 200);
-    return true;
+function canMoveDown(){
+	for(var j = 0; j <= 3;j++){
+		for(var i = 2; i >= 0 ;i--)
+			if(board[i][j] != 0)
+				if(board[i+1][j] == 0 || board[i][j] ==  board[i+1][j])
+					return true;
+	}
+	return false;
+}
+function isGameOver(){
+	var num = getZeroNumber();
+	if(num == 0 && !canMoveLeft() && !canMoveRight() && !canMoveUp() && !canMoveDown())
+		return true;
+	return false;
+}
+function moveLeft(){
+	for(var i = 0;i <= 3;i++)
+		for(var j = 1;j <= 3;j++){
+			if(board[i][j] != 0){
+				for(var k = 0;k <j ;k++){
+					if(board[i][k] == 0 && noBlock(i,k,i,j)){
+						move(i,j,i,k);
+						board[i][k] = board[i][j] ;
+						board[i][j] = 0;
+						break;
+					}
+					if(board[i][k] == board[i][j] && !isCollapsed[i][k] && noBlock(i,k,i,j)){
+						move(i,j,i,k);
+						score += board[i][k];
+						board[i][k] += board[i][j] ;
+						board[i][j] = 0;
+						isCollapsed[i][k] = true;
+						updateScore();
+						break;
+					}
+				}
+			}
+		}
 }
 
-function canMoveLeft(board) {
-    for (var i = 0; i < 4; i++) {
-        for (var j = 1; j < 4; j++) {
-            if (board[i][j] != 0) {
-                if (board[i][j - 1] == 0 || board[i][j - 1] == board[i][j]) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-function canMoveRight(board) {
-    for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 3; j++) {
-            if (board[i][j] != 0) {
-                if (board[i][j + 1] == 0 || board[i][j + 1] == board[i][j]) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-function canMoveUp(board) {
-    for (var i = 1; i < 4; i++) {
-        for (var j = 0; j < 4; j++) {
-            if (board[i][j] != 0) {
-                if (board[i-1][j] == 0 || board[i-1][j] == board[i][j]) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-function canMoveDown(board) {
-    for (var i = 0; i < 3; i++) {
-        for (var j = 0; j < 4; j++) {
-            if (board[i][j] != 0) {
-                if (board[i+1][j] == 0 || board[i+1][j] == board[i][j]) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
+function moveRight(){
+	for(var i = 0;i <= 3;i++)
+		for(var j = 2;j >= 0;j--){
+			if(board[i][j] != 0){
+				for(var k = 3;k > j ;k--){
+					if(board[i][k] == 0 && noBlock(i,j,i,k)){
+						move(i,j,i,k);
+						board[i][k] = board[i][j] ;
+						board[i][j] = 0;
+						break;
+					}
+					if(board[i][k] == board[i][j] && !isCollapsed[i][k] && noBlock(i,j,i,k)){
+						move(i,j,i,k);
+						score += board[i][k];
+						board[i][k] += board[i][j] ;
+						board[i][j] = 0;
+						isCollapsed[i][k] = true;
+						updateScore();
+						break;
+					}
+				}
+			}
+		}
 }
 
-function noBlockHorizontal(row, col1, col2, board) {
-    for (var i = col1 + 1; i < col2; i++) {
-        if (board[row][i] != 0) {
-            return false
-        }
-    }
-    return true;
+function moveUp(){
+	for(var j = 0;j <= 3;j++)
+		for(var i = 1;i <= 3;i++){
+			if(board[i][j] != 0){
+				for(var k = 0;k < i ;k++){
+					if(board[k][j] == 0 && noBlock(k,j,i,j)){
+						move(i,j,k,j);
+						board[k][j] = board[i][j] ;
+						board[i][j] = 0;
+						break;
+					}
+					if(board[k][j] == board[i][j] && !isCollapsed[k][j] && noBlock(k,j,i,j)){
+						move(i,j,k,j);
+						score+=board[k][j];
+						board[k][j] += board[i][j] ;
+						board[i][j] = 0;
+						isCollapsed[k][j] = true;
+						updateScore();
+						break;
+					}
+				}
+			}
+		}
 }
-function noBlockVertical(row1,row2,col,board) {
-    for (var i = row1 + 1; i < row2; i++) {
-        if (board[i][col] != 0) {
-            return false
-        }
-    }
-    return true;
+function moveDown(){
+	for(var j = 0;j <= 3;j++)
+		for(var i = 2;i >= 0 ;i--){
+			if(board[i][j] != 0){
+				for(var k = 3;k > i ;k--){
+					if(board[k][j] == 0 && noBlock(i,j,k,j)){
+						move(i,j,k,j);
+						board[k][j] = board[i][j] ;
+						board[i][j] = 0;
+						break;
+					}
+					if(board[k][j] == board[i][j] && !isCollapsed[k][j] && noBlock(i,j,k,j)){
+						move(i,j,k,j);
+						score+=board[k][j];
+						board[k][j] += board[i][j] ;
+						board[i][j] = 0;
+						isCollapsed[k][j] = true;
+						updateScore();
+						break;
+					}
+				}
+			}
+		}
 }
 
-function showMoveAnimation(fromX, fromY, toX, toY) {
-    var numCell = $("#number-cell-" + fromX + "-" + fromY);
-    numCell.animate({
-        top: getPosTop(toX, toY),
-        left: getPosLeft(toX, toY)
-    }, 200);
+function noBlock(fromX,fromY,toX,toY){
+	if(fromX == toX){
+		for(var i = fromY+1;i < toY;i++)
+			if(board[fromX][i] != 0)
+				return false;
+	}else{
+		for(var i = fromX+1;i < toX;i++)
+			if(board[i][fromY] != 0)
+				return false;
+	}
+	return true;
 }
-function isGameOver() {
-    if (noSpace(board) && noMove(board)) {
-        gameOver();
-    }
+function move(fromX,fromY,toX,toY){
+	var numberCell = $("#number-cell-"+fromX+"-"+fromY);
+	numberCell.animate({
+		top:getPositionTop(toX,toY),
+		left:getPositonLeft(toX,toY)
+	},200);
 }
-function gameOver() {
-    alert('Game Over!!');
+function updateScore(){
+	$("#score").text(score);
 }
-function noMove(board) {
-    if (canMoveLeft(board) || canMoveRight(board) || canMoveUp || canMoveDown(board)) {
-        return false;
-    }
-    return true;
-}
-function updateScore(score) {
-    $('#score').text(score);
-}
+
+var startx = 0;
+var starty=0;
+//支持触控
+document.addEventListener('touchstart',function(event){
+	startx = event.touches[0].pageX;
+	starty = event.touches[0].pageY;
+});
+
+document.addEventListener('touchend',function(event){
+	var endx = event.changedTouches[0].pageX;
+	var endy = event.changedTouches[0].pageY;
+	var deltax = endx - startx;
+	var deltay = endy-starty;
+	if(Math.abs(deltax) < 0.3*documentWidth && Math.abs(deltay) < 0.3*documentWidth){
+		return;
+	}
+	if(Math.abs(deltax) >Math.abs(deltay)){
+		if(deltax < 0){
+			if(isGameOver())
+				alert("Game Over!");
+			if(canMoveLeft()){
+				moveLeft();
+				setTimeout(updateBoardView,250);
+				generateOneNumber();
+			}
+		}else{
+			if(isGameOver())
+				alert("Game Over!");
+			if(canMoveRight()){
+				moveRight();
+				setTimeout(updateBoardView,250);
+				generateOneNumber();
+			}
+		}
+	}else{
+		if(deltay < 0){
+			if(isGameOver())
+				alert("Game Over!");
+			if(canMoveUp()){
+				moveUp();
+				setTimeout(updateBoardView,250);
+				generateOneNumber();	
+			}
+		}else{
+			if(isGameOver())
+				alert("Game Over!");
+			if(canMoveDown()){
+				moveDown();
+				setTimeout(updateBoardView,250);
+				generateOneNumber();
+			}
+		}
+	 }
+});
+
+document.addEventListener('touchmove',function(event){
+	event.preventDefault();
+});
